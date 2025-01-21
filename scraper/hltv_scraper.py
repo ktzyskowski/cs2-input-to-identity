@@ -1,3 +1,4 @@
+import logging
 import os.path
 
 import patoolib
@@ -49,6 +50,8 @@ class HltvScraper:
         r = requests.get(url, stream=True)
         r.raise_for_status()
 
+        logging.debug("request OK")
+
         # write RAR archive to a file inside given directory
         archive_name = url.split('/')[-1] + ".rar"
         archive_path = os.path.join(out, archive_name)
@@ -56,8 +59,12 @@ class HltvScraper:
             for chunk in r.iter_content():
                 f.write(chunk)
 
+        logging.debug("archive downloaded")
+
         # extract RAR archive contents to same directory
         patoolib.extract_archive(archive_path, outdir=out, verbosity=-1)  # silence logs
+
+        logging.debug("archive extracted")
 
     def _download_html(self, url: str) -> str:
         with sync_playwright() as p:
