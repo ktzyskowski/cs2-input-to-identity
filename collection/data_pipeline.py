@@ -3,9 +3,8 @@ import os
 import sys
 from tempfile import TemporaryDirectory
 
-import numpy as np
-
-from parser.array_parser import ArrayParser
+from parser.abstract_parser import AbstractParser
+from parser.spray_parser import SprayParser
 from scraper.hltv_scraper import HltvScraper
 
 
@@ -15,7 +14,7 @@ class DataPipeline:
     This pipeline produces .npy files containing raw player key/mouse information for downstream ML tasks.
     """
 
-    def __init__(self, res: str, scraper: HltvScraper, parser: ArrayParser):
+    def __init__(self, res: str, scraper: HltvScraper, parser: AbstractParser):
         self._resource_directory = os.path.abspath(res)
         self._scraper = scraper
         self._parser = parser
@@ -32,6 +31,7 @@ class DataPipeline:
 
         # if file already exists, read and return data
         if os.path.exists(path):
+            print("match_hrefs.txt exists...")
             with open(path, "r") as f:
                 hrefs = [line.rstrip() for line in f.readlines()]
                 return hrefs
@@ -54,6 +54,7 @@ class DataPipeline:
         """
         path = os.path.join(self._resource_directory, "demo_hrefs.txt")
         if os.path.exists(path):
+            print("demo_hrefs.txt exists...")
             with open(path, "r") as f:
                 hrefs = [line.rstrip() for line in f.readlines()]
                 return hrefs
@@ -80,8 +81,7 @@ class DataPipeline:
 
         for idx, demo_href in enumerate(demo_hrefs):
             match_id = demo_href.split("/")[-1]
-            flag_path = os.path.join(demo_directory, ".downloaded", match_id)
-            if os.path.exists(flag_path):
+            if self._parser.parsed(match_id):
                 # already attempted to download this href, continue on to next
                 logging.info(f"skipping demo {match_id}...")
                 continue
@@ -93,23 +93,24 @@ class DataPipeline:
                 self.download_demo(match_id, demo_href, tmpdir)
 
             # create flag to indicate that this demo has been downloaded
-            os.makedirs(os.path.join(demo_directory, ".downloaded"), exist_ok=True)
-            open(flag_path, "a").close()
+            self._parser.mark_parsed(match_id)
 
     def download_demo(self, match_id: str, demo_href: str, directory: str):
-        demo_directory = os.path.join(self._resource_directory, "demo")
+        """Download a match, and parse the demos contained within.
 
+        :param match_id: the ID of the match.
+        :param demo_href: the href of the demo on HLTV.
+        :param directory: the directory to download the demo to.
+]        """
+        # 1. scrape demo and extract archive to directory
         self._scraper.scrape_demos(demo_href, directory)
         logging.debug("scraped demos")
 
-        # save each sample to resource dir
-        for i, samples_dict in enumerate(self._parser.parse_demos(directory)):
-            for key, array in samples_dict.items():
-                # key is already "{player_id}_{round_num}"
-                sample_path = os.path.join(demo_directory, f"{match_id}_{i}_{key}.npy")
-                np.save(sample_path, array)
-
-        logging.debug("saved demos to resource directory")
+        # 2. parse demos within directory, and do whatever the parser does with them
+        # (most likely implementation is to apply some transformation to the .dem file
+        #  and save it to the /res directory)
+        self._parser.parse_directory(directory, match_id=match_id)
+        logging.debug("parsed demos")
 
     def run(self):
         """Run the data collection pipeline."""
@@ -130,9 +131,10 @@ def main():
 
     Instantiates scraper, parser, and data collection pipeline. It then runs the pipeline.
     """
+
     scraper = HltvScraper(headless=False)
-    parser = ArrayParser()
-    pipeline = DataPipeline("./res", scraper=scraper, parser=parser)
+    parser = SprayParser(directory="res/sprays")
+    pipeline = DataPipeline("res/", scraper=scraper, parser=parser)
     pipeline.run()
 
 

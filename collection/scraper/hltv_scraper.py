@@ -6,7 +6,7 @@ import stealth_requests as requests
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
-from scraper.urls import ResultsUrl
+from collection.scraper.urls import ResultsUrl
 
 
 class HltvScraper:
