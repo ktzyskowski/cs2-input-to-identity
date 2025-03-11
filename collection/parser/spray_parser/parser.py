@@ -49,6 +49,7 @@ class SprayParser(AbstractParser):
         parser = DemoParser(path)
         weapon_fire_df = self._get_weapon_fire_df(parser)
         mouse_df = parser.parse_ticks(["pitch", "yaw"])
+        player_hurt_df = parser.parse_event("player_hurt")
 
         # iterate through each spray
         for spray_id, spray_df in weapon_fire_df.groupby("spray_id"):
@@ -56,9 +57,13 @@ class SprayParser(AbstractParser):
                 continue
 
             player_id = spray_df.iloc[0].user_steamid
+            combined_df = self._link_player_hurt_df(player_hurt_df, spray_df, player_id)
+            if pd.isna(combined_df.iloc[0].hitgroup) or combined_df.iloc[0].hitgroup not in ["chest", "stomach"]:
+                # first shot must be on target!
+                continue
 
             # spray data is N x (pitch, yaw) in degrees
-            spray_data = self._link_dfs(mouse_df, spray_df, player_id)
+            spray_data = self._link_mouse_df(mouse_df, spray_df, player_id)
             # translate spray so it originates from (0, 0)
             spray_data -= spray_data[0]
 
@@ -104,7 +109,7 @@ class SprayParser(AbstractParser):
         weapon_fire_df = weapon_fire_df.reset_index(drop=True)
         return weapon_fire_df
 
-    def _link_dfs(self, mouse_df: pd.DataFrame, spray_df: pd.DataFrame, player_id: str):
+    def _link_mouse_df(self, mouse_df: pd.DataFrame, spray_df: pd.DataFrame, player_id: str):
         """Link the mouse angles with a spray.
 
         :param mouse_df: the mouse angles DataFrame.
@@ -115,6 +120,14 @@ class SprayParser(AbstractParser):
         data_df = mouse_df[mouse_df.tick.isin(spray_df.tick.values)]
         data_df = data_df[data_df.steamid == int(player_id)]
         return data_df[["pitch", "yaw"]].to_numpy()
+
+    def _link_player_hurt_df(self, player_hurt_df: pd.DataFrame, spray_df: pd.DataFrame, player_id: str):
+        player_hurt_df = player_hurt_df[player_hurt_df.tick.isin(spray_df.tick.values)]
+        player_hurt_df = player_hurt_df[player_hurt_df.attacker_steamid == player_id]
+        player_hurt_df = player_hurt_df.drop(
+            columns=["user_name", "user_steamid", "weapon", "attacker_name", "attacker_steamid"])
+        combined_df = pd.merge(spray_df, player_hurt_df, on=["tick"], how="outer")
+        return combined_df
 
     def _save(self, array: np.ndarray, match_id: str, map_id: int, player_id: int, spray_id: int):
         """Save the spray to disk.

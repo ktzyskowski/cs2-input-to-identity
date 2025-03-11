@@ -3,8 +3,8 @@ import os
 import sys
 from tempfile import TemporaryDirectory
 
+from collection.parser.segment_parser.parser import SegmentParser
 from parser.abstract_parser import AbstractParser
-from parser.spray_parser import SprayParser
 from scraper.hltv_scraper import HltvScraper
 
 
@@ -70,8 +70,8 @@ class DataPipeline:
 
         The scraper downloads RAR archives from the HLTV website containing the .dem files.
         This method downloads the RAR archive to a temporary directory, extracts the file contents,
-        and then parses the file into .npy format and saves it in the resources directory.
-        This enables us to store only the data we need without the overhead of storing the large .dem files.
+        and then parses the file into a parseable format and saves it in the resources directory.
+        This enables storage of only the data we need without the overhead of storing large .dem files.
 
         :param demo_hrefs: the demo hrefs.
         """
@@ -133,7 +133,7 @@ def main():
     """
 
     scraper = HltvScraper(headless=False)
-    parser = SprayParser(directory="res/sprays")
+    parser = SegmentParser(directory="res/mnk5", segment_length=5, map_filter=["de_dust2"])
     pipeline = DataPipeline("res/", scraper=scraper, parser=parser)
     pipeline.run()
 
