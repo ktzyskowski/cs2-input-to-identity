@@ -1,4 +1,3 @@
-# from multiprocessing import Pool, cpu_count
 import os
 from multiprocessing import Pool, cpu_count
 
@@ -58,11 +57,16 @@ class SegmentParser(AbstractParser):
         # separate player trajectory into k-second segments
         segmented_player_df = segment_player_df(player_df, self._segment_length)
 
+        # add team numbers to dataframe (differentiate between T/CT)
+        team_numbers = segmented_player_df.unique(subset=["segment_id", "team_num"]).select(["segment_id", "team_num"])
+
         mouse_df = mouse_features.extract(segmented_player_df)
         key_df = key_features.extract(segmented_player_df)
         features = (
             mouse_df
             .join(key_df, on="segment_id", how="inner")
+            .join(team_numbers, on="segment_id", how="inner")
+            .sort("segment_id")
         )
         return features
 

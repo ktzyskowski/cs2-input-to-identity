@@ -133,7 +133,7 @@ def main():
     """
 
     scraper = HltvScraper(headless=False)
-    parser = SegmentParser(directory="res/mnk5", segment_length=5, map_filter=["de_dust2"])
+    parser = SegmentParser(directory="res/mnk5-dust2", segment_length=5, map_filter=["de_dust2"])
     pipeline = DataPipeline("res/", scraper=scraper, parser=parser)
     pipeline.run()
 

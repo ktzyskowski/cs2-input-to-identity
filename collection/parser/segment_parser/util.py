@@ -17,6 +17,7 @@ def extract_tick_df(demo_parser: DemoParser) -> pl.DataFrame:
         *KEY_FEATURES,
         *MOUSE_FEATURES,
         "is_alive",
+        "team_num"
     ])
     tick_df[KEY_FEATURES] = tick_df[KEY_FEATURES].astype(int)
     tick_df = tick_df[tick_df.is_alive]

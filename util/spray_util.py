@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 
-def load_spray_df(directory: str):
+def load_catalog(directory: str, extension: str = ".npy"):
     data = []
     for match_id in os.listdir(directory):
         if not match_id.isnumeric():
@@ -19,7 +19,7 @@ def load_spray_df(directory: str):
                     continue
                 player_directory = os.path.join(map_directory, player_id)
                 for filename in os.listdir(player_directory):
-                    if not filename.endswith(".npy"):
+                    if not filename.endswith(extension):
                         continue
                     data.append([match_id, map_id, player_id, filename])
 
